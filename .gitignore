@@ -1,0 +1,6 @@
+node_modules
+notes-api-webserver.pem
+.env
+.prod.env
+Open-Music-API-V1-Test.postman_collection.json
+Open-Music-API-Test.postman_environment.json

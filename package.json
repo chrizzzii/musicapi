@@ -24,11 +24,12 @@
   },
   "dependencies": {
     "@hapi/hapi": "^21.3.2",
+    "@hapi/jwt": "^3.2.0",
+    "auto-bind": "^4.0.0",
+    "bcrypt": "^6.0.0",
     "dotenv": "^16.5.0",
     "joi": "^17.13.3",
     "nanoid": "^3.1.20",
-    "newman": "^6.2.1",
     "pg": "^8.16.2"
-  },
-  "description": ""
+  }
 }

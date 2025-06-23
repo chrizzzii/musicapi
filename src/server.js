@@ -1,87 +1,137 @@
 require('dotenv').config();
 const Hapi = require('@hapi/hapi');
+const Jwt = require('@hapi/jwt');
+const { Pool } = require('pg');
 
-const albums = require('./albums'); // plugin albums
-const songs = require('./songs'); // plugin songs
+// Plugin albums & songs
+const albums = require('./albums');
+const songs = require('./songs');
+
+// Services & Validators
 const AlbumsService = require('./albums/service');
 const AlbumsValidator = require('./albums/validator');
 const SongsService = require('./songs/service');
 const SongsValidator = require('./songs/validator');
+
+// Exceptions
 const ClientError = require('./exceptions/ClientError');
 
+// Auth
+const UsersService = require('./users/service');
+const AuthenticationsService = require('./authentications/service');
+const UsersValidator = require('./users/validator');
+const AuthenticationsValidator = require('./authentications/validator');
+const TokenManager = require('./tokenize/TokenManager');
+
+// Auth handlers & routes
+const UsersHandler = require('./users/handler');
+const AuthenticationsHandler = require('./authentications/handler');
+const usersRoutes = require('./users/routes');
+const authenticationsRoutes = require('./authentications/routes');
 
 const init = async () => {
-    const server = Hapi.server({
-        port: process.env.PORT || 5000,
-        host: process.env.HOST || 'localhost',
-        routes: {
-            cors: {
-                origin: ['*'],
-            },
-        },
-    });
+  const pool = new Pool();
 
-    const songsService = new SongsService();
-    const albumsService = new AlbumsService();
+  const songsService = new SongsService();
+  const albumsService = new AlbumsService();
+  const usersService = new UsersService(pool);
+  const authenticationsService = new AuthenticationsService(pool);
 
-    await server.register([
-        {
-            plugin: albums,
-            options: {
-                service: albumsService,
-                validator: AlbumsValidator,
-            },
-        },
-        {
-            plugin: songs,
-            options: {
-                service: songsService,
-                validator: SongsValidator,
-            },
-        },
-    ]);
+  const server = Hapi.server({
+    port: process.env.PORT || 5000,
+    host: process.env.HOST || 'localhost',
+    routes: {
+      cors: {
+        origin: ['*'],
+      },
+    },
+  });
 
-    server.ext('onPreResponse', (request, h) => {
-        const { response } = request;
+  await server.register([Jwt]);
 
-        if (response instanceof Error) {
-            // Client Error
-            if (response instanceof ClientError) {
-                return h.response({
-                    status: 'fail',
-                    message: response.message,
-                }).code(response.statusCode);
-            }
+  // JWT Strategy
+  server.auth.strategy('musicapp_jwt', 'jwt', {
+    keys: process.env.ACCESS_TOKEN_KEY,
+    verify: {
+      aud: false,
+      iss: false,
+      sub: false,
+      maxAgeSec: process.env.ACCESS_TOKEN_AGE,
+    },
+    validate: (artifacts) => ({
+      isValid: true,
+      credentials: {
+        id: artifacts.decoded.payload.id,
+      },
+    }),
+  });
 
-            // Not Found
-            if (response.output?.statusCode === 404) {
-                return h.response({
-                    status: 'fail',
-                    message: 'Halaman tidak ditemukan',
-                }).code(404);
-            }
+  // Register plugin albums & songs
+  await server.register([
+    {
+      plugin: albums,
+      options: {
+        service: albumsService,
+        validator: AlbumsValidator,
+      },
+    },
+    {
+      plugin: songs,
+      options: {
+        service: songsService,
+        validator: SongsValidator,
+      },
+    },
+  ]);
 
-            // Server Error
-            if (!response.isServer) {
-                return h.continue;
-            }
+  // Register routes for users & authentications (non-plugin)
+  server.route(usersRoutes(new UsersHandler(usersService, UsersValidator)));
+  server.route(
+    authenticationsRoutes(
+      new AuthenticationsHandler(
+        authenticationsService,
+        usersService,
+        TokenManager,
+        AuthenticationsValidator,
+      ),
+    ),
+  );
 
-            console.error(response);
-            return h.response({
-                status: 'error',
-                message: 'Maaf, terjadi kegagalan pada server kami.',
-            }).code(500);
-        }
+  // Global error handling
+  server.ext('onPreResponse', (request, h) => {
+    const { response } = request;
 
-        return h.continue;
-    });
+    if (response instanceof Error) {
+      if (response instanceof ClientError) {
+        return h.response({
+          status: 'fail',
+          message: response.message,
+        }).code(response.statusCode);
+      }
 
+      if (response.output?.statusCode === 404) {
+        return h.response({
+          status: 'fail',
+          message: 'Halaman tidak ditemukan',
+        }).code(404);
+      }
 
+      if (!response.isServer) return h.continue;
 
+      console.error(response);
+      return h
+        .response({
+          status: 'error',
+          message: 'Maaf, terjadi kegagalan pada server kami.',
+        })
+        .code(500);
+    }
 
+    return h.continue;
+  });
 
-    await server.start();
-    console.log(`Server berjalan pada ${server.info.uri}`);
+  await server.start();
+  console.log(`Server berjalan pada ${server.info.uri}`);
 };
 
 init();

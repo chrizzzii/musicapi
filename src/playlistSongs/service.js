@@ -80,6 +80,34 @@ class PlaylistSongsService {
             throw new NotFoundError('Lagu gagal dihapus dari playlist. Id tidak ditemukan');
         }
     }
+
+    async getPlaylistActivities(playlistId, userId) {
+        // Verifikasi akses ke playlist
+        await this._playlistsService.verifyPlaylistAccess(playlistId, userId);
+
+        const query = {
+            text: `
+          SELECT users.username, songs.title, playlist_song_activities.action, playlist_song_activities.time
+          FROM playlist_song_activities
+          JOIN users ON users.id = playlist_song_activities.user_id
+          JOIN songs ON songs.id = playlist_song_activities.song_id
+          WHERE playlist_song_activities.playlist_id = $1
+          ORDER BY playlist_song_activities.time ASC
+        `,
+            values: [playlistId],
+        };
+
+        const result = await this._pool.query(query);
+
+        return result.rows.map((row) => ({
+            username: row.username,
+            title: row.title,
+            action: row.action,
+            time: row.time,
+        }));
+    }
+
+
 }
 
 module.exports = PlaylistSongsService;

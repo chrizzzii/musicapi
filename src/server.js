@@ -8,6 +8,7 @@ const albums = require('./albums');
 const songs = require('./songs');
 const playlists = require('./playlists');
 const playlistSongs = require('./playlistSongs');
+const collaborations = require('./collaborations');
 
 // Services & Validators
 const AlbumsService = require('./albums/service');
@@ -18,6 +19,8 @@ const PlaylistsService = require('./playlists/service');
 const PlaylistsValidator = require('./validator/playlists');
 const PlaylistSongsService = require('./playlistSongs/service');
 const PlaylistSongsValidator = require('./validator/playlistSongs');
+const CollaborationsService = require('./collaborations/service');
+const CollaborationsValidator = require('./validator/collaborations');
 
 // Exceptions
 const ClientError = require('./exceptions/ClientError');
@@ -46,7 +49,9 @@ const init = async () => {
     const albumsService = new AlbumsService();
     const usersService = new UsersService(pool);
     const authenticationsService = new AuthenticationsService(pool);
+    const collaborationsService = new CollaborationsService(pool);
     const playlistsService = new PlaylistsService(pool);
+    playlistsService.setCollaborationService(collaborationsService);
     const playlistSongsService = new PlaylistSongsService(pool, songsService, playlistsService);
 
     const server = Hapi.server({
@@ -108,6 +113,15 @@ const init = async () => {
                 validator: PlaylistSongsValidator,
             },
         },
+        {
+            plugin: collaborations,
+            options: {
+                collaborationsService,
+                playlistsService,
+                validator: CollaborationsValidator,
+            },
+        },
+
     ]);
 
     // Register routes for users & authentications (non-plugin)

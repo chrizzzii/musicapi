@@ -25,6 +25,7 @@ const CollaborationsValidator = require('./validator/collaborations');
 // Exceptions
 const ClientError = require('./exceptions/ClientError');
 const AuthorizationError = require('./exceptions/AuthorizationError');
+const AuthenticationError = require('./exceptions/AuthenticationError');
 const NotFoundError = require('./exceptions/NotFoundError');
 const InvariantError = require('./exceptions/InvariantError');
 
@@ -143,10 +144,12 @@ const init = async () => {
 
         if (response instanceof Error) {
             if (response instanceof ClientError) {
-                // 🔥 Custom handling error code
-                const statusCode = response instanceof AuthorizationError ? 403 :
-                    response instanceof NotFoundError ? 404 :
-                        response instanceof InvariantError ? 400 : 400;
+                const statusCode =
+                    response instanceof AuthenticationError ? 401 :
+                        response instanceof AuthorizationError ? 403 :
+                            response instanceof NotFoundError ? 404 :
+                                response instanceof InvariantError ? 400 : 400;
+
 
                 return h.response({
                     status: 'fail',

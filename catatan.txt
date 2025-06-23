@@ -1,1 +1,1 @@
-newman run Open-Music-API-V1-Test.postman_collection.json -e Open-Music-API-Test.postman_environment.json
+newman run Open-Music-API-V2-Test.postman_collection.json -e OpenMusic-API-V2-Test.postman_environment.json

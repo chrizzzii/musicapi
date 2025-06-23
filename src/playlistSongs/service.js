@@ -11,10 +11,8 @@ class PlaylistSongsService {
     }
 
     async addSongToPlaylist(playlistId, songId, userId) {
-        // Verifikasi ownership
         await this._playlistsService.verifyPlaylistOwner(playlistId, userId);
 
-        // Verifikasi lagu valid
         await this._songsService.getSongById(songId);
 
         const id = `playlistsong-${nanoid(16)}`;
@@ -82,7 +80,6 @@ class PlaylistSongsService {
     }
 
     async getPlaylistActivities(playlistId, userId) {
-        // Verifikasi akses ke playlist
         await this._playlistsService.verifyPlaylistAccess(playlistId, userId);
 
         const query = {

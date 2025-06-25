@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const Hapi = require('@hapi/hapi');
 const Jwt = require('@hapi/jwt');
 const { Pool } = require('pg');
@@ -9,6 +10,9 @@ const songs = require('./songs');
 const playlists = require('./playlists');
 const playlistSongs = require('./playlistSongs');
 const collaborations = require('./collaborations');
+const ExportsPlugin = require('./exports');
+const UploadsPlugin = require('./uploads');
+const AlbumLikesPlugin = require('./albumLikes');
 
 // Services & Validators
 const AlbumsService = require('./albums/service');
@@ -21,6 +25,11 @@ const PlaylistSongsService = require('./playlistSongs/service');
 const PlaylistSongsValidator = require('./validator/playlistSongs');
 const CollaborationsService = require('./collaborations/service');
 const CollaborationsValidator = require('./validator/collaborations');
+const ExportsValidator = require('./exports/validator');
+const ProducerService = require('./exports/service');
+const StorageService = require('./storage/StorageService');
+const UploadsValidator = require('./validator/uploads');
+const AlbumLikesService = require('./albumLikes/service');
 
 // Exceptions
 const ClientError = require('./exceptions/ClientError');
@@ -54,6 +63,10 @@ const init = async () => {
     const playlistsService = new PlaylistsService(pool);
     playlistsService.setCollaborationService(collaborationsService);
     const playlistSongsService = new PlaylistSongsService(pool, songsService, playlistsService);
+    const producerService = new ProducerService();
+    const storageService = new StorageService(path.resolve(__dirname, 'uploads'));
+    const albumLikesService = new AlbumLikesService();
+
 
     const server = Hapi.server({
         port: process.env.PORT || 5000,
@@ -117,12 +130,33 @@ const init = async () => {
         {
             plugin: collaborations,
             options: {
-                collaborationsService,
+                service: collaborationsService,
                 playlistsService,
                 validator: CollaborationsValidator,
             },
         },
-
+        {
+            plugin: ExportsPlugin,
+            options: {
+                service: producerService,
+                playlistsService,
+                validator: ExportsValidator,
+            },
+        },
+        {
+            plugin: UploadsPlugin,
+            options: {
+                service: storageService,
+                albumsService,
+                validator: UploadsValidator,
+            },
+        },
+        {
+            plugin: AlbumLikesPlugin,
+            options: {
+                service: albumLikesService,
+            },
+        },
     ]);
 
     // Register routes for users & authentications (non-plugin)
@@ -157,6 +191,21 @@ const init = async () => {
                 }).code(statusCode);
             }
 
+            if (response.output?.statusCode === 413) {
+                return h.response({
+                    status: 'fail',
+                    message: 'Payload content terlalu besar',
+                }).code(413);
+            }
+
+            if (response.output?.statusCode === 415) {
+                return h.response({
+                    status: 'fail',
+                    message: 'Tipe konten tidak didukung',
+                }).code(415);
+            }
+
+
             if (response.output?.statusCode === 404) {
                 return h.response({
                     status: 'fail',
@@ -176,6 +225,19 @@ const init = async () => {
         }
 
         return h.continue;
+    });
+
+
+    await server.register(require('@hapi/inert'));
+
+    server.route({
+        method: 'GET',
+        path: '/upload/images/{param*}',
+        handler: {
+            directory: {
+                path: path.resolve(__dirname, 'uploads'),
+            },
+        },
     });
 
 

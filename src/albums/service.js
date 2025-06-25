@@ -35,12 +35,21 @@ class AlbumsService {
         };
         const songsResult = await this._pool.query(songsQuery);
 
+        const album = albumResult.rows[0];
+
+        if (album.cover) {
+            album.coverUrl = `http://${process.env.HOST}:${process.env.PORT}/upload/images/${album.cover}`;
+        } else {
+            album.coverUrl = null;
+        }
+
+        delete album.cover;
+
         return {
-            ...albumResult.rows[0],
+            ...album,
             songs: songsResult.rows,
         };
     }
-
 
     async editAlbumById(id, { name, year }) {
         const query = {
@@ -74,7 +83,18 @@ class AlbumsService {
         return result.rows;
     }
 
+    async updateAlbumCover(albumId, filename) {
+        const query = {
+            text: 'UPDATE albums SET cover = $1 WHERE id = $2 RETURNING id',
+            values: [filename, albumId],
+        };
 
+        const result = await this._pool.query(query);
+        if (!result.rows.length) {
+            throw new NotFoundError('Gagal memperbarui cover. Id tidak ditemukan');
+        }
+        return result.rows[0].id;
+    }
 }
 
 module.exports = AlbumsService;

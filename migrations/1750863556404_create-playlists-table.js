@@ -1,5 +1,3 @@
-exports.shorthands = undefined;
-
 exports.up = pgm => {
     pgm.sql(`CREATE TABLE IF NOT EXISTS playlists (
         id TEXT PRIMARY KEY,

@@ -30,6 +30,7 @@ const ProducerService = require('./exports/service');
 const StorageService = require('./storage/StorageService');
 const UploadsValidator = require('./validator/uploads');
 const AlbumLikesService = require('./albumLikes/service');
+const RedisCacheService = require('./cache/RedisCacheService');
 
 // Exceptions
 const ClientError = require('./exceptions/ClientError');
@@ -65,7 +66,8 @@ const init = async () => {
     const playlistSongsService = new PlaylistSongsService(pool, songsService, playlistsService);
     const producerService = new ProducerService();
     const storageService = new StorageService(path.resolve(__dirname, 'uploads'));
-    const albumLikesService = new AlbumLikesService();
+    const cacheService = new RedisCacheService();
+    const albumLikesService = new AlbumLikesService(pool, cacheService);
 
 
     const server = Hapi.server({

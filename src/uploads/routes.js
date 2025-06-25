@@ -11,7 +11,6 @@ const routes = (handler) => [
                 output: 'stream',
                 parse: true,
             },
-            auth: 'musicapp_jwt',
         },
 
     },

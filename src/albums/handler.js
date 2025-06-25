@@ -38,6 +38,7 @@ class AlbumsHandler {
                 album: {
                     ...album,
                     songs,
+                    coverUrl: album.coverUrl ?? null,
                 },
             },
         };

@@ -37,13 +37,13 @@ class AlbumsService {
 
         const album = albumResult.rows[0];
 
-        if (album.cover) {
-            album.coverUrl = `http://${process.env.HOST}:${process.env.PORT}/upload/images/${album.cover}`;
+        if (album.cover_url) {
+            album.coverUrl = `http://${process.env.HOST}:${process.env.PORT}/upload/images/${album.cover_url}`;
         } else {
             album.coverUrl = null;
         }
 
-        delete album.cover;
+        delete album.cover_url;
 
         return {
             ...album,
@@ -85,13 +85,13 @@ class AlbumsService {
 
     async updateAlbumCover(albumId, filename) {
         const query = {
-            text: 'UPDATE albums SET cover = $1 WHERE id = $2 RETURNING id',
+            text: 'UPDATE albums SET cover_url = $1 WHERE id = $2 RETURNING id',
             values: [filename, albumId],
         };
 
         const result = await this._pool.query(query);
         if (!result.rows.length) {
-            throw new NotFoundError('Gagal memperbarui cover. Id tidak ditemukan');
+            throw new NotFoundError('Gagal memperbarui cover_url. Id tidak ditemukan');
         }
         return result.rows[0].id;
     }
